@@ -104,31 +104,51 @@ class PickCubeEnv(BaseEnv):
         )
         self._hidden_objects.append(self.goal_site)
 
+    # def _initialize_episode(self, env_idx: torch.Tensor, options: dict):
+    #     with torch.device(self.device):
+    #         b = len(env_idx)
+    #         self.table_scene.initialize(env_idx)
+    #         xyz = torch.zeros((b, 3))
+    #         xyz[:, :2] = (
+    #             torch.rand((b, 2)) * self.cube_spawn_half_size * 2
+    #             - self.cube_spawn_half_size
+    #         )
+    #         xyz[:, 0] += self.cube_spawn_center[0]
+    #         xyz[:, 1] += self.cube_spawn_center[1]
+
+    #         xyz[:, 2] = self.cube_half_size
+    #         qs = randomization.random_quaternions(b, lock_x=True, lock_y=True)
+    #         self.cube.set_pose(Pose.create_from_pq(xyz, qs))
+
+    #         goal_xyz = torch.zeros((b, 3))
+    #         goal_xyz[:, :2] = (
+    #             torch.rand((b, 2)) * self.cube_spawn_half_size * 2
+    #             - self.cube_spawn_half_size
+    #         )
+    #         goal_xyz[:, 0] += self.cube_spawn_center[0]
+    #         goal_xyz[:, 1] += self.cube_spawn_center[1]
+    #         goal_xyz[:, 2] = torch.rand((b)) * self.max_goal_height + xyz[:, 2]
+    #         self.goal_site.set_pose(Pose.create_from_pq(goal_xyz))
+
     def _initialize_episode(self, env_idx: torch.Tensor, options: dict):
-        with torch.device(self.device):
-            b = len(env_idx)
-            self.table_scene.initialize(env_idx)
-            xyz = torch.zeros((b, 3))
-            xyz[:, :2] = (
-                torch.rand((b, 2)) * self.cube_spawn_half_size * 2
-                - self.cube_spawn_half_size
-            )
-            xyz[:, 0] += self.cube_spawn_center[0]
-            xyz[:, 1] += self.cube_spawn_center[1]
+        device = torch.device(self.device)
 
-            xyz[:, 2] = self.cube_half_size
-            qs = randomization.random_quaternions(b, lock_x=True, lock_y=True)
-            self.cube.set_pose(Pose.create_from_pq(xyz, qs))
+        b = len(env_idx)
+        self.table_scene.initialize(env_idx)
 
-            goal_xyz = torch.zeros((b, 3))
-            goal_xyz[:, :2] = (
-                torch.rand((b, 2)) * self.cube_spawn_half_size * 2
-                - self.cube_spawn_half_size
-            )
-            goal_xyz[:, 0] += self.cube_spawn_center[0]
-            goal_xyz[:, 1] += self.cube_spawn_center[1]
-            goal_xyz[:, 2] = torch.rand((b)) * self.max_goal_height + xyz[:, 2]
-            self.goal_site.set_pose(Pose.create_from_pq(goal_xyz))
+        xyz = torch.zeros((b, 3), device=device)
+        rand_xy = torch.rand((b, 2), device=device) * self.cube_spawn_half_size * 2 - self.cube_spawn_half_size
+        center_xy = torch.tensor(self.cube_spawn_center[:2], device=device)
+        xyz[:, :2] = rand_xy + center_xy
+        xyz[:, 2] = self.cube_half_size
+        qs = randomization.random_quaternions(b, lock_x=True, lock_y=True).to(device)
+        self.cube.set_pose(Pose.create_from_pq(xyz, qs))
+
+        goal_xyz = torch.zeros((b, 3), device=device)
+        rand_goal_xy = torch.rand((b, 2), device=device) * self.cube_spawn_half_size * 2 - self.cube_spawn_half_size
+        goal_xyz[:, :2] = rand_goal_xy + center_xy
+        goal_xyz[:, 2] = torch.rand((b,), device=device) * self.max_goal_height + xyz[:, 2]
+        self.goal_site.set_pose(Pose.create_from_pq(goal_xyz))
 
     def _get_obs_extra(self, info: Dict):
         # in reality some people hack is_grasped into observations by checking if the gripper can close fully or not
