@@ -191,7 +191,7 @@ class PDJointPosMimicController(PDJointPosController):
         )
         """list of control joint indices corresponding to mimic joint indices"""
         self.control_joint_indices = torch.unique(self.mimic_control_joint_indices).to(
-            torch.int32
+            torch.long
         )
         """list of all directly controlled joint indices"""
 
