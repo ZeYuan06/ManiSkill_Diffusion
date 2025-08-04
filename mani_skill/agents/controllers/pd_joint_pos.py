@@ -187,7 +187,7 @@ class PDJointPosMimicController(PDJointPosController):
             self.mimic_joint_indices, dtype=torch.int32, device=self.device
         )
         self.mimic_control_joint_indices = torch.tensor(
-            self.mimic_control_joint_indices, dtype=torch.int32, device=self.device
+            self.mimic_control_joint_indices, dtype=torch.long, device=self.device
         )
         """list of control joint indices corresponding to mimic joint indices"""
         self.control_joint_indices = torch.unique(self.mimic_control_joint_indices).to(
