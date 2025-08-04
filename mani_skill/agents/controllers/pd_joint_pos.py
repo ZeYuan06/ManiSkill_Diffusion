@@ -184,7 +184,7 @@ class PDJointPosMimicController(PDJointPosController):
             self._offset[i] = offset
 
         self.mimic_joint_indices = torch.tensor(
-            self.mimic_joint_indices, dtype=torch.int32, device=self.device
+            self.mimic_joint_indices, dtype=torch.long, device=self.device
         )
         self.mimic_control_joint_indices = torch.tensor(
             self.mimic_control_joint_indices, dtype=torch.long, device=self.device
