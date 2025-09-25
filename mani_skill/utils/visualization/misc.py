@@ -106,7 +106,7 @@ def tile_images(images: List[Array], nrows=1) -> Array:
         cur_w = column[0].shape[1 + batched]
         next_x = cur_x + cur_w
         if is_torch:
-            column_image = torch.concatenate(column, dim=0 + batched)
+            column_image = torch.cat(column, dim=0 + batched)
         else:
             column_image = np.concatenate(column, axis=0 + batched)
         cur_h = column_image.shape[0 + batched]
