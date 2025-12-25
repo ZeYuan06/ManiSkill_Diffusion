@@ -279,7 +279,7 @@ def vectorize_pose(
     Maps several formats of Pose representation to the appropriate tensor representation
     """
     if isinstance(pose, sapien.Pose):
-        return torch.concatenate(
+        return torch.cat(
             [
                 common.to_tensor(pose.p, device=device),
                 common.to_tensor(pose.q, device=device),

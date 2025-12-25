@@ -375,10 +375,11 @@ class Actor(PhysxRigidDynamicComponentStruct[sapien.Entity]):
             if self.hidden:
                 self.before_hide_pose[self.scene._reset_mask[self._scene_idxs]] = arg1
                 return
+            scene_idxs = self._scene_idxs.long()
+            mask = self.scene._reset_mask[scene_idxs]
             if self.scene.parallel_in_single_scene:
                 if len(arg1.shape) == 1:
                     arg1 = arg1.view(1, -1)
-                mask = self.scene._reset_mask[self._scene_idxs].to(torch.bool)
                 new_xyzs = (
                     arg1[:, :3] + self.scene.scene_offsets[self._scene_idxs[mask]]
                 )
@@ -386,9 +387,7 @@ class Actor(PhysxRigidDynamicComponentStruct[sapien.Entity]):
                 new_pose[:, 3:] = arg1[:, 3:]
                 new_pose[:, :3] = new_xyzs
                 arg1 = new_pose
-            self.px.cuda_rigid_body_data.torch()[
-                self._body_data_index[self.scene._reset_mask[self._scene_idxs]], :7
-            ] = arg1
+            self.px.cuda_rigid_body_data.torch()[self._body_data_index[mask], :7] = arg1
         else:
             if isinstance(arg1, sapien.Pose):
                 for obj in self._objs:

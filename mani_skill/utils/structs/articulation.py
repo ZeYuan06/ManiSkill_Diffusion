@@ -63,9 +63,9 @@ class Articulation(BaseStruct[physx.PhysxArticulation]):
     _cached_joint_target_indices: dict[int, torch.Tensor] = field(default_factory=dict)
     """Map from a set of joints of this articulation and the indexing torch tensor to use for setting drive targets in GPU sims."""
 
-    _net_contact_force_queries: dict[
-        Tuple, physx.PhysxGpuContactBodyImpulseQuery
-    ] = field(default_factory=dict)
+    _net_contact_force_queries: dict[Tuple, physx.PhysxGpuContactBodyImpulseQuery] = (
+        field(default_factory=dict)
+    )
     """Maps a tuple of link names to pre-saved net contact force queries"""
 
     def __str__(self):
@@ -266,7 +266,7 @@ class Articulation(BaseStruct[physx.PhysxArticulation]):
         return torch.tensor(
             [px_articulation.gpu_index for px_articulation in self._objs],
             device=self.device,
-            dtype=torch.int32,
+            dtype=torch.int64,
         )
 
     @cached_property
@@ -449,9 +449,9 @@ class Articulation(BaseStruct[physx.PhysxArticulation]):
                 bodies = []
                 for k in link_names:
                     bodies += self.links_map[k]._bodies
-                self._net_contact_force_queries[
-                    tuple(link_names)
-                ] = self.px.gpu_create_contact_body_impulse_query(bodies)
+                self._net_contact_force_queries[tuple(link_names)] = (
+                    self.px.gpu_create_contact_body_impulse_query(bodies)
+                )
             query = self._net_contact_force_queries[tuple(link_names)]
             self.px.gpu_query_contact_body_impulses(query)
             return (
@@ -516,10 +516,11 @@ class Articulation(BaseStruct[physx.PhysxArticulation]):
                 vals = [
                     x.active_index[0] for x in joint_indices
                 ]  # active_index on joint is batched but it should be the same value across all managed joint objects
+            vals_tensor = common.to_tensor(vals, device=self.device).to(
+                dtype=torch.int64
+            )
             self._cached_joint_target_indices[joint_indices] = torch.meshgrid(
-                self._data_index,
-                common.to_tensor(vals, device=self.device),
-                indexing="ij",
+                self._data_index, vals_tensor, indexing="ij"
             )
         return self._cached_joint_target_indices[joint_indices]
 
@@ -745,8 +746,10 @@ class Articulation(BaseStruct[physx.PhysxArticulation]):
     def qf(self, arg1: torch.Tensor):
         if self.scene.gpu_sim_enabled:
             arg1 = common.to_tensor(arg1, device=self.device)
+            scene_idxs = self._scene_idxs.long()
+            mask = self.scene._reset_mask[scene_idxs]
             self.px.cuda_articulation_qf.torch()[
-                self._data_index[self.scene._reset_mask[self._scene_idxs]],
+                self._data_index[mask],
                 : self.max_dof,
             ] = arg1
         else:
@@ -781,8 +784,10 @@ class Articulation(BaseStruct[physx.PhysxArticulation]):
     def qpos(self, arg1: torch.Tensor):
         if self.scene.gpu_sim_enabled:
             arg1 = common.to_tensor(arg1, device=self.device)
+            scene_idxs = self._scene_idxs.long()
+            mask = self.scene._reset_mask[scene_idxs]
             self.px.cuda_articulation_qpos.torch()[
-                self._data_index[self.scene._reset_mask[self._scene_idxs]],
+                self._data_index[mask],
                 : self.max_dof,
             ] = arg1
         else:
@@ -804,8 +809,10 @@ class Articulation(BaseStruct[physx.PhysxArticulation]):
     def qvel(self, arg1: torch.Tensor):
         if self.scene.gpu_sim_enabled:
             arg1 = common.to_tensor(arg1, device=self.device)
+            scene_idxs = self._scene_idxs.long()
+            mask = self.scene._reset_mask[scene_idxs]
             self.px.cuda_articulation_qvel.torch()[
-                self._data_index[self.scene._reset_mask[self._scene_idxs]],
+                self._data_index[mask],
                 : self.max_dof,
             ] = arg1
         else:
@@ -822,8 +829,10 @@ class Articulation(BaseStruct[physx.PhysxArticulation]):
     def root_angular_velocity(self, arg1: Array) -> None:
         if self.scene.gpu_sim_enabled:
             arg1 = common.to_tensor(arg1, device=self.device)
+            scene_idxs = self._scene_idxs.long()
+            mask = self.scene._reset_mask[scene_idxs]
             self.px.cuda_rigid_body_data.torch()[
-                self.root._body_data_index[self.scene._reset_mask[self._scene_idxs]],
+                self.root._body_data_index[mask],
                 10:13,
             ] = arg1
         else:
@@ -840,8 +849,10 @@ class Articulation(BaseStruct[physx.PhysxArticulation]):
     def root_linear_velocity(self, arg1: Array) -> None:
         if self.scene.gpu_sim_enabled:
             arg1 = common.to_tensor(arg1, device=self.device)
+            scene_idxs = self._scene_idxs.long()
+            mask = self.scene._reset_mask[scene_idxs]
             self.px.cuda_rigid_body_data.torch()[
-                self.root._body_data_index[self.scene._reset_mask[self._scene_idxs]],
+                self.root._body_data_index[mask],
                 7:10,
             ] = arg1
         else:
@@ -887,10 +898,9 @@ class Articulation(BaseStruct[physx.PhysxArticulation]):
                 gx, gy = self.get_joint_target_indices(joints)
             else:
                 gx, gy = self.get_joint_target_indices(joint_indices)
-            self.px.cuda_articulation_target_qpos.torch()[
-                gx[self.scene._reset_mask[self._scene_idxs]],
-                gy[self.scene._reset_mask[self._scene_idxs]],
-            ] = targets
+            scene_idxs = self._scene_idxs.long()
+            mask = self.scene._reset_mask[scene_idxs]
+            self.px.cuda_articulation_target_qpos.torch()[gx[mask], gy[mask]] = targets
         else:
             for i, joint in enumerate(joints):
                 joint.set_drive_target(targets[0, i])
@@ -912,10 +922,9 @@ class Articulation(BaseStruct[physx.PhysxArticulation]):
                 gx, gy = self.get_joint_target_indices(joints)
             else:
                 gx, gy = self.get_joint_target_indices(joint_indices)
-            self.px.cuda_articulation_target_qvel.torch()[
-                gx[self.scene._reset_mask[self._scene_idxs]],
-                gy[self.scene._reset_mask[self._scene_idxs]],
-            ] = targets
+            scene_idxs = self._scene_idxs.long()
+            mask = self.scene._reset_mask[scene_idxs]
+            self.px.cuda_articulation_target_qvel.torch()[gx[mask], gy[mask]] = targets
         else:
             for i, joint in enumerate(joints):
                 joint.set_drive_velocity_target(targets[0, i])

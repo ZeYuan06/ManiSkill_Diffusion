@@ -27,6 +27,7 @@ class UniformPlacementSampler:
     ) -> None:
         assert len(bounds) == 2 and len(bounds[0]) == len(bounds[1])
         self._bounds = common.to_tensor(bounds, device=device)
+        self.device = device
         self._ranges = self._bounds[1] - self._bounds[0]
         self.fixtures_radii = None
         self.fixture_positions = None
@@ -46,15 +47,15 @@ class UniformPlacementSampler:
         """
         if self.fixture_positions is None:
             sampled_pos = (
-                torch.rand((self.batch_size, self._bounds.shape[1])) * self._ranges
+                torch.rand((self.batch_size, self._bounds.shape[1]), device=self.device) * self._ranges
                 + self._bounds[0]
             )
         else:
-            pass_mask = torch.zeros((self.batch_size), dtype=bool)
-            sampled_pos = torch.zeros((self.batch_size, self._bounds.shape[1]))
+            pass_mask = torch.zeros((self.batch_size), dtype=bool, device=self.device)
+            sampled_pos = torch.zeros((self.batch_size, self._bounds.shape[1]), device=self.device, dtype=self._bounds.dtype)
             for i in range(max_trials):
                 pos = (
-                    torch.rand((self.batch_size, self._bounds.shape[1])) * self._ranges
+                    torch.rand((self.batch_size, self._bounds.shape[1]), device=self.device) * self._ranges
                     + self._bounds[0]
                 )  # (B, d)
                 dist = torch.linalg.norm(

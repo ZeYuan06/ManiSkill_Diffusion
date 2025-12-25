@@ -367,8 +367,10 @@ class PhysxRigidDynamicComponentStruct(PhysxRigidBodyComponentStruct[T], Generic
     def angular_velocity(self, arg1: Array):
         if self.scene.gpu_sim_enabled:
             arg1 = common.to_tensor(arg1, device=self.device)
+            scene_idxs = self._scene_idxs.long()
+            mask = self.scene._reset_mask[scene_idxs]
             self._body_data[
-                self._body_data_index[self.scene._reset_mask[self._scene_idxs]], 10:13
+                self._body_data_index[mask], 10:13
             ] = arg1
         else:
             arg1 = common.to_numpy(arg1)
@@ -438,8 +440,10 @@ class PhysxRigidDynamicComponentStruct(PhysxRigidBodyComponentStruct[T], Generic
     def linear_velocity(self, arg1: Array):
         if self.scene.gpu_sim_enabled:
             arg1 = common.to_tensor(arg1, device=self.device)
+            scene_idxs = self._scene_idxs.long()
+            mask = self.scene._reset_mask[scene_idxs]
             self._body_data[
-                self._body_data_index[self.scene._reset_mask[self._scene_idxs]], 7:10
+                self._body_data_index[mask], 7:10
             ] = arg1
         else:
             arg1 = common.to_numpy(arg1)
