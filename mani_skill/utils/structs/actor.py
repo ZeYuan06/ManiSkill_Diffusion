@@ -316,9 +316,9 @@ class Actor(PhysxRigidDynamicComponentStruct[sapien.Entity]):
     def apply_force(self, force: Array):
         """Apply an instantaneous external force to this actor in Newtons to the body's center of mass. Once called no need to call any gpu_apply_x functions as this handles it for you."""
         if self.scene.gpu_sim_enabled:
-            self.px.cuda_rigid_body_force.torch()[
-                self._body_data_index, :3
-            ] = common.to_tensor(force, device=self.device)
+            self.px.cuda_rigid_body_force.torch()[self._body_data_index, :3] = (
+                common.to_tensor(force, device=self.device)
+            )
             self.px.gpu_apply_rigid_dynamic_force()
         else:
             for body in self._bodies:
@@ -378,7 +378,7 @@ class Actor(PhysxRigidDynamicComponentStruct[sapien.Entity]):
             if self.scene.parallel_in_single_scene:
                 if len(arg1.shape) == 1:
                     arg1 = arg1.view(1, -1)
-                mask = self.scene._reset_mask[self._scene_idxs]
+                mask = self.scene._reset_mask[self._scene_idxs].to(torch.bool)
                 new_xyzs = (
                     arg1[:, :3] + self.scene.scene_offsets[self._scene_idxs[mask]]
                 )
